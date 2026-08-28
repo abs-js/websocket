@@ -1,7 +1,7 @@
 {
-  "name": "simple-soccer-ball-online",
+  "name": "school-soccer-online",
   "version": "1.0.0",
-  "description": "WebSocket lobby + match server for Simple Soccer Ball",
+  "description": "WebSocket lobby + match server for School Soccer",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

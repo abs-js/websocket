@@ -5,12 +5,12 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="mobile-web-app-capable" content="yes">
-	<meta name="application-name" content="Simple Soccer Ball">
-	<meta name="apple-mobile-web-app-title" content="Simple Soccer Ball">
+	<meta name="application-name" content="School Soccer">
+	<meta name="apple-mobile-web-app-title" content="School Soccer">
 	<link rel="icon" type="image/png" sizes="32x32" href="img.png">
 	<link rel="apple-touch-icon" href="imgA.png">
 	<link rel="icon" type="image/png" sizes="192x192" href="img.png">
-	<title>Simple Soccer Ball — β final</title>
+	<title>School Soccer</title>
 	<!-- CrazyGames HTML5 SDK v3 -->
 	<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 	<style>
@@ -1457,7 +1457,7 @@
 </head>
 <body>
 	<div id="bootLoader">
-		<div class="boot-title">Simple Soccer Ball</div>
+		<div class="boot-title">School Soccer</div>
 		<div class="hex-loader" id="hexLoader">
 			<div class="hex-fill" id="hexFill"></div>
 		</div>
@@ -1552,7 +1552,7 @@
 		</div>
 	</div>
 
-	<h1 id="gameBrandTitle">Simple Soccer Ball</h1>
+	<h1 id="gameBrandTitle">School Soccer</h1>
 	<div id="topBar">
 		<button id="btnFullscreen" onclick="toggleFullscreen()" data-i18n="fullscreen">Tela Cheia ⛶</button>
 		<div id="scoreBoard">
@@ -1575,7 +1575,7 @@
 		
 		<div id="menuOverlay">
 			<div class="menu-box">
-				<h2 id="menuTitle">Simple Soccer Ball</h2>
+				<h2 id="menuTitle">School Soccer</h2>
 				<div id="matchStatsBox" style="display:none"></div>
 
 				<div class="menu-nav" id="mainMenuNav">
@@ -3302,7 +3302,7 @@
 
 		// ========== PROGRESSÃO BETA (moedas, elenco, dificuldades) ==========
 		const BETA_KEY = "soccerBetaProg_v6";
-		const GAME_NAME = "Simple Soccer Ball";
+		const GAME_NAME = "School Soccer";
 
 		// ===== Idioma (detecção automática + troca manual) =====
 		function detectLang() {
@@ -3333,7 +3333,7 @@
 				squadTitle: "Elenco & Formação", close: "Fechar ✕", coins: "Moedas",
 				neutral: "Neutro", attack: "Ataque", defend: "Defesa",
 				endWin: "Vitória!", endLose: "Derrota!", endDraw: "Empate!",
-				extraTime: "Acréscimo", welcome: "Bem-vindo ao Simple Soccer Ball!",
+				extraTime: "Acréscimo", welcome: "Bem-vindo ao School Soccer!",
 				settingsTitle: "⚙ Configurações", controlsTitle: "🎮 Controles",
 				sprintMode: "Modo Corrida:", sprintHold: "1. Segurar Sprint",
 				sprintTap: "2. Tocar em Sprint", sprintDouble: "3. Toque duplo no joystick",
@@ -3374,7 +3374,7 @@
 				squadTitle: "Squad & Formation", close: "Close ✕", coins: "Coins",
 				neutral: "Neutral", attack: "Attack", defend: "Defend",
 				endWin: "Victory!", endLose: "Defeat!", endDraw: "Draw!",
-				extraTime: "Stoppage", welcome: "Welcome to Simple Soccer Ball!",
+				extraTime: "Stoppage", welcome: "Welcome to School Soccer!",
 				settingsTitle: "⚙ Settings", controlsTitle: "🎮 Controls",
 				sprintMode: "Sprint mode:", sprintHold: "1. Hold Sprint",
 				sprintTap: "2. Tap Sprint", sprintDouble: "3. Double-tap joystick",
@@ -7686,6 +7686,10 @@
 				window.onlineMatch.remoteInput = null;
 				startOnlineMatch();
 			}
+			if (msg.type === "lineup") {
+				const team = window.onlineMatch.role === "host" ? 2 : 1;
+				applyRemoteLineup(team, msg.players || []);
+			}
 			if (msg.type === "input" && window.onlineMatch.active) {
 				window.onlineMatch.remoteInput = msg.input || null;
 			}
@@ -7740,6 +7744,35 @@
 			if (!onlineWs || onlineWs.readyState !== 1) onlineConnect();
 			else onlineSend({ type: "list" });
 		}
+		function collectMyLineup() {
+			try {
+				const xi = pickStartingXI();
+				return xi.map(p => ({
+					name: p.name || "Jogador",
+					pos: p.positionName || p.prefPos || "",
+					prefPos: p.prefPos || "",
+					role: p.role || "field",
+					ovr: overallOf(p)
+				}));
+			} catch (e) { return []; }
+		}
+		function applyRemoteLineup(team, list) {
+			if (!Array.isArray(list) || !list.length || !players.length) return;
+			const side = players.filter(p => p.team === team);
+			side.forEach(p => { p._namedFromNet = false; });
+			list.forEach((info, i) => {
+				const want = String(info.pos || info.prefPos || "").toUpperCase();
+				let p = side.find(x => !x._namedFromNet && String(x.positionName || x.prefPos || "").toUpperCase() === want);
+				if (!p) p = side.find(x => !x._namedFromNet && x.role === (info.role === "gk" ? "gk" : "field"));
+				if (!p) p = side[i];
+				if (!p) return;
+				const nm = String(info.name || "").trim();
+				if (nm) {
+					p.displayName = nm;
+					p._namedFromNet = true;
+				}
+			});
+		}
 		function startOnlineMatch() {
 			pendingCareerMatch = null;
 			const room = window.onlineMatch.room;
@@ -7756,8 +7789,12 @@
 					const field = players.filter(p => p.team === 2 && p.role === "field" && !p.isSentOff);
 					const pick = field.sort((a,b) => Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y))[0]
 						|| players.find(p => p.team === 2);
-					if (pick) setControlledPlayer(pick);
+					if (pick) {
+						setControlledPlayer(pick);
+						pick._onlineRemote = false;
+					}
 				}
+				onlineSend({ type: "lineup", players: collectMyLineup() });
 			});
 		}
 		function moveLocalOnlinePlayer() {
@@ -7800,9 +7837,10 @@
 			camera.y = Math.max(0, Math.min(fieldHeight - canvas.height, camera.y));
 		}
 		function collectOnlineInput() {
+			const joyOn = Math.hypot(mobile.dx || 0, mobile.dy || 0) > 0.05;
 			return {
-				dx: mobile.active ? mobile.dx : ((keys["KeyD"]?1:0) - (keys["KeyA"]?1:0)),
-				dy: mobile.active ? mobile.dy : ((keys["KeyS"]?1:0) - (keys["KeyW"]?1:0)),
+				dx: joyOn ? mobile.dx : ((keys["KeyD"]?1:0) - (keys["KeyA"]?1:0)),
+				dy: joyOn ? mobile.dy : ((keys["KeyS"]?1:0) - (keys["KeyW"]?1:0)),
 				sprint: !!(keys["ShiftLeft"] || keys["ShiftRight"] || mobile.sprintActive || mobile.sprintBtn),
 				pass: !!(keys["KeyP"] || mobile.pass),
 				shoot: !!(keys["Space"] || keys["KeyK"] || mobile.shoot),
@@ -7830,6 +7868,7 @@
 					players.forEach(x => { if (x.team === p.team) { x.isUser = false; x._onlineRemote = false; } });
 					near._onlineRemote = true;
 				}
+				inp.switchP = false;
 			}
 		}
 		function snapshotOnlineState() {
@@ -7838,7 +7877,8 @@
 				score: [scoreBlue, scoreRed],
 				time: matchTimeLeft,
 				players: players.map(p => ({
-					x: p.x, y: p.y, t: p.team, r: p.role, fx: p.facingX, fy: p.facingY, u: !!p.isUser
+					x: p.x, y: p.y, t: p.team, r: p.role, fx: p.facingX, fy: p.facingY,
+					u: !!p.isUser, nm: p.displayName || p.positionName || ""
 				}))
 			};
 		}
@@ -7867,10 +7907,14 @@
 				for (let i = 0; i < n; i++) {
 					const p = players[i], s = st.players[i];
 					if (!p || !s) continue;
-					if (p === userPlayer && window.onlineMatch.role === "guest") continue;
+					if (p === userPlayer && window.onlineMatch.role === "guest") {
+						if (s.nm) p.displayName = s.nm;
+						continue;
+					}
 					p.x = s.x; p.y = s.y;
 					if (s.fx != null) p.facingX = s.fx;
 					if (s.fy != null) p.facingY = s.fy;
+					if (s.nm) p.displayName = s.nm;
 				}
 			}
 		}
@@ -10073,6 +10117,18 @@
 		function update() {
 			if (gameState !== "playing") return;
 			enforceSingleUser();
+			if (window.onlineMatch && window.onlineMatch.active && window.onlineMatch.role === "host") {
+				const inp = window.onlineMatch.remoteInput;
+				if (inp) {
+					let rp = players.find(p => p.team === 2 && p._onlineRemote);
+					if (!rp) {
+						rp = players.filter(p => p.team === 2 && p.role === "field" && !p.isSentOff)
+							.sort((a,b) => Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y))[0];
+						if (rp) rp._onlineRemote = true;
+					}
+					if (rp) applyRemoteToPlayer(rp, inp);
+				}
+			}
 			if (window.onlineMatch && window.onlineMatch.active && window.onlineMatch.role === "guest") {
 				if (userPlayer && userPlayer.team !== 2) {
 					const pick = players.find(p => p.team === 2 && p.role === "field" && !p.isSentOff)
@@ -10902,9 +10958,12 @@
 				if (p.stunTime > 0) p.stunTime--; 
 				if (p.tackleCooldown > 0) p.tackleCooldown--;
 				if (p.isUser) return;
+				if (p._onlineRemote) return;
 
 				let wantSprint = false;
 				let pMentality = p.team === 1 ? userMentality : enemyMentality;
+				const pvpOnline = !!(window.onlineMatch && window.onlineMatch.active);
+				if (pvpOnline) pMentality = Math.min(pMentality, 0);
 				let pExhaustFactor = (0.60 + 0.40 * (p.matchStamina / 100)) * (1 + (pMentality * 0.05));
 
 				// IA valoriza energia
@@ -11190,10 +11249,12 @@
 
 					// Usuário: só finaliza com mentalidade > 0; IA adversária sempre pode
 					const mentNow = p.team === 1 ? userMentality : enemyMentality;
-					const canShoot = p.team === 2 ? true : (mentNow > 0);
+					const pvpOn = !!(window.onlineMatch && window.onlineMatch.active);
+					const canShoot = pvpOn ? (Math.random() < 0.35) : (p.team === 2 ? true : (mentNow > 0));
 					let inFinalThird = p.team === 1 ? p.x > fieldWidth * 0.68 : p.x < fieldWidth * 0.32;
 					let shootRoll = Math.random();
 					if (p.team === 2 && Math.random() < aiMistakeChance) shootRoll += 0.15;
+					if (pvpOn) shootRoll += 0.28;
 					if (canShoot && inFinalThird && distToGoal < 320 && (shootRoll < aiShootChance || distToOpp < 55)) { 
 						let distFactor = Math.max(0.4, 1 - (distToGoal / 380));
 						p.power = (5 + Math.random() * 2.5) * distFactor + 1.5;
@@ -11294,7 +11355,8 @@
 
 					 // Time do usuário: só ataca com mentalidade > 0; IA adversária sempre pode jogar
 					 const ment = p.team === 1 ? userMentality : enemyMentality;
-					 const canAttack = p.team === 2 ? true : (ment > 0);
+					 const pvpOn = !!(window.onlineMatch && window.onlineMatch.active);
+					 const canAttack = pvpOn ? (ment > 0 && Math.random() < 0.45) : (p.team === 2 ? true : (ment > 0));
 					 if (ball.holder && ball.holder.team === p.team) {
 						 if (canAttack) {
 							 // Avança em proporção do campo (não valores fixos antigos)
@@ -12603,16 +12665,6 @@
 		function gameLoop() {
 			update();
 			if (window.onlineMatch && window.onlineMatch.active && window.onlineMatch.role === "host" && gameState === "playing") {
-				const inp = window.onlineMatch.remoteInput;
-				if (inp) {
-					let rp = players.find(p => p.team === 2 && p._onlineRemote);
-					if (!rp) {
-						rp = players.filter(p => p.team === 2 && p.role === "field" && !p.isSentOff)
-							.sort((a,b) => Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y))[0];
-						if (rp) rp._onlineRemote = true;
-					}
-					if (rp) applyRemoteToPlayer(rp, inp);
-				}
 				pumpOnlineNet();
 			}
 			draw();

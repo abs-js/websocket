@@ -1,6 +1,6 @@
 "use strict";
 /**
- * Simple Soccer Ball — online lobby + match relay
+ * School Soccer — online lobby + match relay
  * Host-authoritative: the room host simulates and broadcasts snapshots.
  * Guest sends inputs. Server validates bets, Elo and disconnects.
  */
@@ -174,7 +174,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
       ok: true,
-      name: "Simple Soccer Ball WS",
+      name: "School Soccer WS",
       rooms: rooms.size,
       players: clients.size
     }));
@@ -293,6 +293,13 @@ function handle(c, msg) {
       }
       break;
     }
+    case "lineup": {
+      const room = rooms.get(c.roomId);
+      if (!room) return;
+      const other = c.id === room.hostId ? room.guest() : room.host();
+      if (other) other.send({ type: "lineup", from: c.id, players: Array.isArray(msg.players) ? msg.players : [] });
+      break;
+    }
     case "input": {
       const room = rooms.get(c.roomId);
       if (!room || room.status !== "playing") return;
@@ -331,5 +338,5 @@ function handle(c, msg) {
 }
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log("Simple Soccer Ball WS on :" + PORT);
+  console.log("School Soccer WS on :" + PORT);
 });
