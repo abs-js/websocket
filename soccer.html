@@ -1015,11 +1015,11 @@
 		#btnSkill.used { opacity: 0.35; border-color: #888; color: #aaa; background: #333; }
 		#btnDribble {
 			position: absolute;
-			right: 18px;
+			right: 14px;
 			left: auto;
-			bottom: 88px;
-			width: 58px;
-			height: 58px;
+			bottom: 96px;
+			width: 56px;
+			height: 56px;
 			border-radius: 50%;
 			border: 2px solid #fff;
 			background: rgba(0, 120, 180, 0.92);
@@ -1038,9 +1038,9 @@
 		/* Sprint padrão: direita, à esquerda do chute (B) */
 		#btnSprint {
 			position: absolute;
-			right: 92px;
+			right: 168px;
 			left: auto;
-			bottom: 22px;
+			bottom: 16px;
 			width: 58px;
 			height: 58px;
 			border-radius: 50%;
@@ -1161,11 +1161,11 @@
 		}
 		/* Ordem vertical padrão (baixo→cima): B Y A X */
 		#btnShoot { bottom: 0; right: 0; background: rgba(220, 40, 40, 0.92); width: 70px; height: 70px; font-size: 20px; }
-		#btnPass  { bottom: 88px; right: 78px; background: rgba(230, 200, 40, 0.92); color: #222; width: 56px; height: 56px; }
-		#btnCross { bottom: 14px; right: 78px; background: rgba(40, 180, 70, 0.92); width: 56px; height: 56px; }
-		#btnSwitch { bottom: 152px; right: 8px; background: rgba(50, 120, 220, 0.92); width: 52px; height: 52px; font-size: 16px; }
+		#btnPass  { bottom: 96px; right: 76px; background: rgba(230, 200, 40, 0.92); color: #222; width: 54px; height: 54px; }
+		#btnCross { bottom: 8px; right: 80px; background: rgba(40, 180, 70, 0.92); width: 54px; height: 54px; }
+		#btnSwitch { bottom: 160px; right: 6px; background: rgba(50, 120, 220, 0.92); width: 50px; height: 50px; font-size: 16px; }
 		#actionButtons {
-			width: 160px;
+			width: 150px;
 			height: 230px;
 		}
 
@@ -1612,7 +1612,7 @@
 						<div id="onlineMeBox" style="padding:10px;border:1px solid #4fc3f7;border-radius:8px;background:rgba(0,40,80,0.4);font-size:13px;margin-bottom:8px"></div>
 						<div class="menu-row">
 							<label>Servidor</label>
-							<input id="onlineWsUrl" type="text" placeholder="wss://seu-app.onrender.com" style="flex:1;min-width:140px;padding:6px;background:#111;color:#fff;border:1px solid #555;border-radius:6px">
+							<input id="onlineWsUrl" type="text" value="https://websocket-3dab.onrender.com" readonly style="flex:1;min-width:140px;padding:6px;background:#111;color:#fff;border:1px solid #555;border-radius:6px">
 						</div>
 						<div class="btn-row" style="margin:6px 0">
 							<button type="button" class="btn-sec" onclick="onlineConnect()">Conectar</button>
@@ -1705,6 +1705,13 @@
 								</select>
 							</div>
 							<p class="menu-hint" id="sprintModeHint" data-i18n="sprintHintTap">Toque no botão SPRINT para correr; solte o joystick para parar.</p>
+							<div class="menu-row">
+								<label>Câmera</label>
+								<select id="selCamera">
+									<option value="player" selected>Seguir jogador</option>
+									<option value="ball">Seguir bola</option>
+								</select>
+							</div>
 							<div class="menu-row-check">
 								<label>
 									<input type="checkbox" id="chkMouseAim" checked>
@@ -3434,6 +3441,7 @@
 			const data = {
 				lang: LANG,
 				sprintMode: (document.getElementById("selSprintMode") || {}).value || "tap",
+				cameraMode: (document.getElementById("selCamera") || {}).value || "player",
 				mouseAim: !!(document.getElementById("chkMouseAim") || {}).checked,
 				flatButtons: !!(document.getElementById("chkFlatButtons") || {}).checked,
 				sprintLeft: !!(document.getElementById("chkSprintLeft") || {}).checked,
@@ -3462,6 +3470,7 @@
 				try { localStorage.setItem("ssb_lang", LANG); } catch (e) {}
 			}
 			setVal("selSprintMode", data.sprintMode === "doubletap" ? "tap" : data.sprintMode);
+			setVal("selCamera", data.cameraMode || "player");
 			setVal("chkMouseAim", data.mouseAim);
 			setVal("chkFlatButtons", data.flatButtons);
 			setVal("chkSprintLeft", data.sprintLeft);
@@ -3477,7 +3486,7 @@
 		}
 		function bindSettingsAutosave() {
 			const ids = [
-				"selSprintMode", "chkMouseAim", "chkFlatButtons", "chkSprintLeft",
+				"selSprintMode", "selCamera", "chkMouseAim", "chkFlatButtons", "chkSprintLeft",
 				"chkEnhancedGfx", "chkExtraGfx", "selWeather", "selSpeed",
 				"chkOffside", "chkAutoSub", "selTime", "selDifficulty"
 			];
@@ -7428,10 +7437,11 @@
 			if (!data) return;
 			ensurePlayerMeta(data);
 			pl.rosterId = data.id;
-			pl.positionName = data.positionName || data.name;
-			pl.displayName = data.name || data.positionName;
-			pl.prefPos = data.prefPos || null;
+			pl.positionName = data.positionName || data.prefPos || "JG";
+			pl.displayName = (data.name && String(data.name).trim()) ? data.name : (data.prefPos || "Jogador");
+			pl.prefPos = data.prefPos || data.positionName || null;
 			pl.nat = data.nat || null;
+			if (!data.attrs || typeof data.attrs !== "object") data.attrs = {};
 			const inPos = isCorrectPosition(data.prefPos, data.positionName);
 			const posBoost = inPos ? 1.12 : 1;
 			pl.inCorrectPos = inPos;
@@ -7585,6 +7595,8 @@
 				return Math.round(xi.reduce((s, p) => s + overallOf(p), 0) / xi.length);
 			} catch (e) { return 55; }
 		}
+		const DEFAULT_ONLINE_HTTP = "https://websocket-3dab.onrender.com";
+		const DEFAULT_ONLINE_WS = "wss://websocket-3dab.onrender.com";
 		function ensureOnlineStats() {
 			if (!beta.online) beta.online = { rating: 800, wins: 0, losses: 0, draws: 0 };
 			if (beta.online.rating == null) beta.online.rating = 800;
@@ -7601,20 +7613,14 @@
 				OVR do XI: <b>${teamOverallXI()}</b> · Rating: <b style="color:#ffd700">${beta.online.rating}</b><br>
 				V ${wins} · D ${losses} · XP ${xp} · ${formatCoins(beta.coins || 0)}🪙`;
 			const inp = document.getElementById("onlineWsUrl");
-			if (inp && !inp.value) inp.value = localStorage.getItem("ssb_ws_url") || "";
+			if (inp) inp.value = DEFAULT_ONLINE_HTTP;
 		}
 		function onlineSetStatus(t) {
 			const el = document.getElementById("onlineStatus");
 			if (el) el.textContent = t;
 		}
 		function onlineWsUrl() {
-			let u = ((document.getElementById("onlineWsUrl") || {}).value || "").trim();
-			if (!u) u = localStorage.getItem("ssb_ws_url") || "";
-			if (u.startsWith("https://")) u = "wss://" + u.slice(8);
-			if (u.startsWith("http://")) u = "ws://" + u.slice(7);
-			u = u.replace(/\/$/, "");
-			if (u) try { localStorage.setItem("ssb_ws_url", u); } catch (e) {}
-			return u;
+			return DEFAULT_ONLINE_WS;
 		}
 		function onlineSend(obj) {
 			if (onlineWs && onlineWs.readyState === 1) onlineWs.send(JSON.stringify(obj));
@@ -7736,16 +7742,62 @@
 		}
 		function startOnlineMatch() {
 			pendingCareerMatch = null;
+			const room = window.onlineMatch.room;
+			if (room) {
+				const other = window.onlineMatch.role === "guest" ? room.host : room.guest;
+				if (other) {
+					opponentIdentity.name = other.team || other.name || "Adversário";
+					opponentIdentity.ovr = other.ovr || 55;
+				}
+			}
 			showBootLoader(800, () => {
 				startGameAfterLoad();
-				if (window.onlineMatch.team === 2 && userPlayer) {
-					userPlayer.isUser = false;
-					const gk = players.find(p => p.team === 2 && p.role === "gk") || players.find(p => p.team === 2);
+				if (window.onlineMatch.team === 2) {
 					const field = players.filter(p => p.team === 2 && p.role === "field" && !p.isSentOff);
-					const pick = field.sort((a,b) => Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y))[0] || gk;
-					if (pick) { userPlayer = pick; userPlayer.isUser = true; }
+					const pick = field.sort((a,b) => Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y))[0]
+						|| players.find(p => p.team === 2);
+					if (pick) setControlledPlayer(pick);
 				}
 			});
+		}
+		function moveLocalOnlinePlayer() {
+			if (!userPlayer || userPlayer.stunTime > 0) return;
+			const inp = collectOnlineInput();
+			const dx = Number(inp.dx) || 0, dy = Number(inp.dy) || 0;
+			if (Math.abs(dx) > 0.04 || Math.abs(dy) > 0.04) {
+				const ln = Math.hypot(dx, dy) || 1;
+				userPlayer.setFacing(dx / ln, dy / ln);
+				const spd = inp.sprint ? userPlayer.sprintSpeed : userPlayer.baseSpeed;
+				userPlayer.x += (dx / ln) * spd;
+				userPlayer.y += (dy / ln) * spd;
+				userPlayer.x = Math.max(userPlayer.radius, Math.min(fieldWidth - userPlayer.radius, userPlayer.x));
+				userPlayer.y = Math.max(userPlayer.radius, Math.min(fieldHeight - userPlayer.radius, userPlayer.y));
+			}
+			if (inp.switchP) {
+				switchToNextNearBall();
+				keys["KeyO"] = false;
+				mobile.switchPlayer = false;
+			}
+		}
+		function updateMatchCamera() {
+			const mode = ((document.getElementById("selCamera") || {}).value) || "player";
+			const leadX = (ball.vx || 0) * 10;
+			const leadY = (ball.vy || 0) * 10;
+			let focusX = ball.x + leadX;
+			let focusY = ball.y + leadY;
+			if (mode === "player" && userPlayer) {
+				focusX = userPlayer.x * 0.72 + ball.x * 0.28 + leadX * 0.35;
+				focusY = userPlayer.y * 0.72 + ball.y * 0.28 + leadY * 0.35;
+			} else if (userPlayer && mode === "ball") {
+				focusX = ball.x * 0.78 + userPlayer.x * 0.22 + leadX * 0.7;
+				focusY = ball.y * 0.78 + userPlayer.y * 0.22 + leadY * 0.7;
+			}
+			const targetCamX = focusX - canvas.width / 2;
+			const targetCamY = focusY - canvas.height / 2;
+			camera.x += (targetCamX - camera.x) * 0.08;
+			camera.y += (targetCamY - camera.y) * 0.08;
+			camera.x = Math.max(0, Math.min(fieldWidth - canvas.width, camera.x));
+			camera.y = Math.max(0, Math.min(fieldHeight - canvas.height, camera.y));
 		}
 		function collectOnlineInput() {
 			return {
@@ -7775,9 +7827,8 @@
 				const near = players.filter(x => x.team === p.team && !x.isSentOff && x.role === "field")
 					.sort((a,b) => Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y))[0];
 				if (near && near !== p) {
-					p.isUser = false;
-					near.isUser = true;
-					if (window.onlineMatch.role === "host") { /* guest body */ }
+					players.forEach(x => { if (x.team === p.team) { x.isUser = false; x._onlineRemote = false; } });
+					near._onlineRemote = true;
 				}
 			}
 		}
@@ -7806,14 +7857,21 @@
 			if (st.time != null) {
 				matchTimeLeft = st.time;
 				const t = document.getElementById("timerDisplay");
-				if (t) t.textContent = formatTime(matchTimeLeft);
+				if (t) {
+					const m = Math.floor(st.time / 60), s = Math.floor(st.time % 60);
+					t.textContent = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+				}
 			}
-			if (st.players && players.length === st.players.length) {
-				st.players.forEach((s, i) => {
-					const p = players[i];
-					if (!p) return;
-					p.x = s.x; p.y = s.y; p.facingX = s.fx; p.facingY = s.fy;
-				});
+			if (st.players && st.players.length && players.length) {
+				const n = Math.min(st.players.length, players.length);
+				for (let i = 0; i < n; i++) {
+					const p = players[i], s = st.players[i];
+					if (!p || !s) continue;
+					if (p === userPlayer && window.onlineMatch.role === "guest") continue;
+					p.x = s.x; p.y = s.y;
+					if (s.fx != null) p.facingX = s.fx;
+					if (s.fy != null) p.facingY = s.fy;
+				}
 			}
 		}
 		function pumpOnlineNet() {
@@ -8791,19 +8849,36 @@
 			return list[index] || list[0] || null;
 		}
 
+		let lastSwitchAt = 0;
+		function enforceSingleUser() {
+			if (!players || !players.length) return;
+			if (userPlayer && players.indexOf(userPlayer) < 0) userPlayer = null;
+			players.forEach(p => { p.isUser = (p === userPlayer); });
+			if (!userPlayer) {
+				const fallback = players.find(p => p.team === 1 && !p.isSentOff && !p.isExhausted);
+				if (fallback) {
+					userPlayer = fallback;
+					userPlayer.isUser = true;
+				}
+			}
+		}
+		function setControlledPlayer(p) {
+			if (!p || p.isSentOff) return;
+			players.forEach(x => { x.isUser = false; });
+			p.isUser = true;
+			userPlayer = p;
+			p.stunTime = 0;
+		}
 		function switchToNextNearBall() {
 			if (!userPlayer) return;
-			let first = getTeammateNearBall(1, 0);
+			if (Date.now() - lastSwitchAt < 260) return;
+			lastSwitchAt = Date.now();
+			const team = userPlayer.team || 1;
+			let first = getTeammateNearBall(team, 0);
 			let next = first;
-			if (first === userPlayer) {
-				next = getTeammateNearBall(1, 1);
-			}
-			if (next && next !== userPlayer) {
-				userPlayer.isUser = false;
-				userPlayer = next;
-				userPlayer.isUser = true;
-				userPlayer.stunTime = 0;
-			}
+			if (first === userPlayer) next = getTeammateNearBall(team, 1);
+			if (next && next !== userPlayer) setControlledPlayer(next);
+			else enforceSingleUser();
 		}
 
 		// Na cobrança: chama um companheiro para perto da bola
@@ -9997,8 +10072,16 @@
 
 		function update() {
 			if (gameState !== "playing") return;
+			enforceSingleUser();
 			if (window.onlineMatch && window.onlineMatch.active && window.onlineMatch.role === "guest") {
+				if (userPlayer && userPlayer.team !== 2) {
+					const pick = players.find(p => p.team === 2 && p.role === "field" && !p.isSentOff)
+						|| players.find(p => p.team === 2);
+					if (pick) setControlledPlayer(pick);
+				}
 				pumpOnlineNet();
+				moveLocalOnlinePlayer();
+				updateMatchCamera();
 				return;
 			}
 
@@ -10368,11 +10451,7 @@
 			}
 			if (keys["KeyI"] || mobile.switchGK) {
 				let gk = players.find(p => p.team === 1 && p.role === 'gk' && !p.isExhausted);
-				if (gk && gk !== userPlayer) {
-					userPlayer.isUser = false;
-					userPlayer = gk;
-					userPlayer.isUser = true;
-				}
+				if (gk) setControlledPlayer(gk);
 				keys["KeyI"] = false;
 				mobile.switchGK = false;
 			}
@@ -10794,22 +10873,7 @@
 			// ===== BARRAS DE FORÇA (UI) =====
 			updatePowerBars();
 
-			// Câmera segue a bola; se o controlado ficar pra trás, troca na hora
-			if (userPlayer && ball) {
-				const dUB = Math.hypot(userPlayer.x - ball.x, userPlayer.y - ball.y);
-				if (dUB > 210 && !setPiece && !goalReplay && !goalCeleb.active) {
-					const near = typeof getTeammateNearBall === "function" ? getTeammateNearBall(1, 0) : null;
-					if (near && near !== userPlayer && !near.isExhausted && !near.isSentOff) {
-						userPlayer.isUser = false;
-						userPlayer = near;
-						userPlayer.isUser = true;
-					}
-				}
-			}
-			let targetCamX = ball.x - canvas.width / 2;
-			let targetCamY = ball.y - canvas.height / 2;
-			camera.x += (targetCamX - camera.x) * 0.14;
-			camera.y += (targetCamY - camera.y) * 0.14;
+			updateMatchCamera();
 
 			camera.x = Math.max(0, Math.min(fieldWidth - canvas.width, camera.x));
 			camera.y = Math.max(0, Math.min(fieldHeight - canvas.height, camera.y));
