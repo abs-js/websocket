@@ -282,13 +282,14 @@ function tickRoom(room) {
   if (room.lockGoal > 0) room.lockGoal--;
 
   const players = Object.values(room.world.plist);
+  const hid = room.world.ball.hid;
   room.broadcast({
     type: "world",
-    ball: room.world.ball,
+    ball: Object.assign({}, room.world.ball, { owner: hid }),
     players,
     score: room.world.score,
     time: room.world.time,
-    act: room.world.act,
+    owner: hid,
     ctrl: room.world.ctrl,
     sp: room.world.sp
   });
