@@ -234,6 +234,9 @@ function applySync(room, c, msg) {
     };
     return;
   }
+  if (claim >= 0 && hid >= 0 && hidTeam && hidTeam !== team) {
+    debugSelf("steal-attempt", { from: team, hid, claim });
+  }
   if (claim >= 0 && teamOfIndex(room, claim) === team && (hid < 0 || hidTeam === team)) {
     room.world.ball.hid = claim;
     const p = room.world.plist[claim];
@@ -310,6 +313,11 @@ function resetKick(room, kickTeam) {
 }
 
 const server = http.createServer((req, res) => {
+  if ((req.url || "").startsWith("/debug")) {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true, lastSelf: lastSelfDebug, recent: serverDebug.slice(-20), rooms: rooms.size, clients: clients.size }));
+    return;
+  }
   res.writeHead(200, { "Content-Type": "text/plain" });
   res.end("School Soccer WS ok\n");
 });
@@ -331,6 +339,30 @@ wss.on("connection", (ws) => {
     byId.delete(c.id);
   });
 });
+
+const serverDebug = [];
+let lastSelfDebug = null;
+function debugSelf(kind, data) {
+  const ev = { t: Date.now(), kind: String(kind || "log"), data: data || {} };
+  serverDebug.push(ev);
+  if (serverDebug.length > 100) serverDebug.shift();
+  lastSelfDebug = ev;
+  process.emit("soccer-debug", ev);
+}
+process.on("soccer-debug", (ev) => {
+  lastSelfDebug = ev;
+});
+setInterval(() => {
+  const payload = {
+    type: "debug",
+    self: true,
+    rooms: rooms.size,
+    clients: clients.size,
+    uptime: Math.round(process.uptime())
+  };
+  debugSelf("heartbeat", payload);
+  handle(null, payload);
+}, 4000);
 
 function handle(c, msg) {
   switch (msg.type) {
@@ -445,7 +477,26 @@ function handle(c, msg) {
     case "leave":
       leaveRoom(c, "leave");
       break;
+    case "debug": {
+      if (!c) {
+        debugSelf("loopback", { rooms: rooms.size, clients: clients.size });
+        break;
+      }
+      const room = c.roomId ? rooms.get(c.roomId) : null;
+      c.send({
+        type: "debug",
+        self: false,
+        you: c.id,
+        room: room ? room.id : null,
+        ball: room ? room.world.ball : null,
+        lastSelf: lastSelfDebug,
+        recent: serverDebug.slice(-8)
+      });
+      debugSelf("client-debug", { id: c.id, room: c.roomId });
+      break;
+    }
     default:
+      debugSelf("unknown", { type: msg && msg.type, from: c && c.id });
       break;
   }
 }
