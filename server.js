@@ -217,7 +217,13 @@ function applySync(room, c, msg) {
   const hid = room.world.ball.hid;
   const hidTeam = hid >= 0 ? teamOfIndex(room, hid) : 0;
 
-  if (b && acts.length) {
+  const incomingSpd = b ? Math.hypot(Number(b.vx)||0, Number(b.vy)||0) : 0;
+  const releaseAct = acts.some(a => {
+    const k = String((a && a.k) || a || "");
+    return /shoot|pass|cross|release/i.test(k);
+  });
+  if (b && (acts.length || incomingSpd > 0.35 || b.air || Number(b.hid) === -1 || Number(b.owner) === -1)) {
+    const drop = releaseAct || incomingSpd > 0.35 || b.air || Number(b.hid) === -1 || Number(b.owner) === -1;
     room.world.ball = {
       x: Number(b.x) || room.world.ball.x,
       y: Number(b.y) || room.world.ball.y,
@@ -225,11 +231,11 @@ function applySync(room, c, msg) {
       vy: Number(b.vy) || 0,
       h: Number(b.h) || 0,
       air: b.air ? 1 : 0,
-      hid: Number.isInteger(b.hid) ? b.hid : -1
+      hid: drop ? -1 : (Number.isInteger(b.hid) ? b.hid : -1)
     };
-    return;
+    if (drop) return;
   }
-  if (claim >= 0 && teamOfIndex(room, claim) === team && (hid < 0 || hidTeam === team)) {
+  if (claim >= 0 && incomingSpd < 0.3 && !(b && b.air) && teamOfIndex(room, claim) === team && (hid < 0 || hidTeam === team)) {
     room.world.ball.hid = claim;
     const p = room.world.plist[claim];
     if (p) {
@@ -252,7 +258,9 @@ function tickRoom(room) {
   const ball = room.world.ball;
   if (Date.now() > room.world.actUntil) room.world.act = "";
 
-  if (ball.hid >= 0 && room.world.plist[ball.hid]) {
+  const moving = Math.hypot(ball.vx || 0, ball.vy || 0) > 0.35 || ball.air;
+  if (moving) ball.hid = -1;
+  if (ball.hid >= 0 && room.world.plist[ball.hid] && !moving) {
     const p = room.world.plist[ball.hid];
     ball.x = p.x + (p.fx || 0) * 16;
     ball.y = p.y + (p.fy || 0) * 16;
